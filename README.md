@@ -1,7 +1,7 @@
 # Set-up instructions
 
-pip install argparse pandas xlrd gmplot
+pip install argparse pandas xlrd gmplot geopy
 
-usage: python create_map.py ~/Projects/testing/Member_info.xlsx
+usage: `python create_map.py <file_path> <api_key>`
 
 go to localhost:8888/map.html in browser
