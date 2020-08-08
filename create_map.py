@@ -2,10 +2,8 @@ import os
 import json
 import argparse
 import pandas as pd
-import numpy as np
 from sklearn.cluster import KMeans
 import gmplot
-from geopy.distance import geodesic
 import http.server
 import socketserver
 
@@ -78,20 +76,27 @@ with open("clusters.txt", "w") as txt_file:
 # If map flag is set, create map and serve
 if args.map and args.apikey:
     print("Mapping...")
+
     # Set center of map and zoom level
     gmap = gmplot.GoogleMapPlotter(43.5503, -79.6914, 9, apikey=args.apikey)
 
-    # Plot locations and draw
-    lats = []
-    longs = []
-    for location in location_data:
-        lats.append(location["lat"])
-        longs.append(location["long"])
-    gmap.scatter(lats, longs, "red", size = 10, apikey=args.apikey)
+    for i in range(num_clusters):
+        lats = []
+        longs = []
+        for index, row in df.iterrows():
+            if row["cluster_label"] == i:
+                lats.append(row["lat"])
+                longs.append(row["long"])
+
+        # Scatter locations and create polygon clusters
+        gmap.marker(lats[0], longs[0], title="Cluster"+str(i))
+        gmap.polygon(lats, longs, edge_width=1)
+        gmap.scatter(lats, longs, "red", size=1, apikey=args.apikey)
+    
     gmap.draw("map.html")
 
     # Start server
-    port = 8080
+    port = 8888
     handler = http.server.SimpleHTTPRequestHandler
     print("Serving at port: " + str(port))
     with socketserver.TCPServer(("", port), handler) as httpd:
