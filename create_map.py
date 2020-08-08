@@ -32,6 +32,7 @@ if args.file_path and args.apikey:
             location_obj = {
                 "name": name,
                 "address": addr,
+                "city": city,
                 "lat": location[0],
                 "long": location[1]
             }
@@ -51,6 +52,7 @@ with open("locations.json") as json_file:
 # Organize into data frame
 df = pd.DataFrame(location_data)
 cols = list(df)
+cols.insert(0, cols.pop(cols.index("city")))
 cols.insert(0, cols.pop(cols.index("address")))
 cols.insert(0, cols.pop(cols.index("name")))
 df = df.loc[:, cols]
@@ -59,19 +61,19 @@ df = df.loc[:, cols]
 print("Clustering...")
 num_clusters = 15
 kmeans = KMeans(n_clusters=num_clusters, init="k-means++")
-kmeans.fit(df[df.columns[2:4]])
-df["cluster label"] = kmeans.fit_predict(df[df.columns[2:4]])
+kmeans.fit(df[df.columns[3:5]])
+df["cluster_label"] = kmeans.fit_predict(df[df.columns[3:5]])
 centers = kmeans.cluster_centers_
-labels = kmeans.predict(df[df.columns[2:4]])
+labels = kmeans.predict(df[df.columns[3:5]])
 
 # Output clusters to text file
-df = df.sort_values("cluster label")
+df = df.sort_values("cluster_label")
 with open("clusters.txt", "w") as txt_file:
     for i in range(num_clusters):
-        txt_file.write("Cluster {}:".format(i))
-        for row in (df.loc[df["cluster label"] == i]).iterrows():
-            print(row)
-            txt_file.write(row["name"] + ", " + row["address"])
+        txt_file.write("\nCluster {}:\n".format(i))
+        for index, row in df.iterrows():
+            if row["cluster_label"] == i:
+                txt_file.write("{}, {}, {}\n".format(row["name"], row["address"], row["city"]))
 
 # If map flag is set, create map and serve
 if args.map and args.apikey:
