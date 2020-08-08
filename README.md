@@ -1,6 +1,6 @@
 # Set-up instructions
 
-pip install argparse pandas xlrd gmplot geopy
+pip install argparse pandas numpy xlrd gmplot geopy sklearn
 
 usage: `python create_map.py <api_key> <file_path> [-map]`
 
