@@ -1,4 +1,10 @@
+# Local folders
+.vscode
+__pycache__
+
+# Files produced by scripts
 map.html
 locations.json
 clusters.txt
-.vscode
+
+class_schedule.html
