@@ -5,6 +5,14 @@ from urllib.parse import urljoin
 import webbrowser
 
 
+def print_help():
+    print(
+    """Thank you for using the Class Schedule Checker!\n
+    Please enter the subject, course number, section number, and term.\n
+    For example, if you are intersted in section 3190 of ECON 101 for the 
+    Fall 2021 semester, enter 'ECON', '101', '3190', and '1219'.\n""")
+
+
 def get_form(url, session):
     """Return all form tags found on web page"""
     res = session.get(url)
@@ -45,22 +53,32 @@ def get_form_details(form):
     return details
 
 
-def parse_file(section_num):
+def get_enrolment_number(section_num):
+    """Parse the HTML and print the number of empty seats in the section"""
     try:
         with open(("class_schedule.html"), "r") as f:
+            # parse file
             f = f.read()
             table = etree.HTML(f).find("body/main/table/tr/td/table")
             rows = iter(table)
             headers = [col.text for col in next(rows)]
+
             for row in rows:
                 values = [col.text for col in row]
                 section_data = dict(zip(headers, values))
-                if section_data['Class'] == str(section_num):
-                    cap = int(section_data['Enrl Cap'])
-                    tot = int(section_data['Enrl Tot'])
-                    print(f"The enrol cap for this course is: {cap}")
-                    print(f"The number of students enrolled is: {tot}")
-                    print(f"The number of available spots is: {cap - tot}")
+
+                # get info for given section number
+                if section_data["Class"] == str(section_num):
+                    cap = int(section_data["Enrl Cap"])
+                    tot = int(section_data["Enrl Tot"])
+                    empty_seats = cap - tot
+                    print(f"Enrolment cap: {cap}")
+                    print(f"Current enrolment: {tot}")
+                    print(f"Seats available: {empty_seats}")
+                    if (empty_seats > 0):
+                        print("There is at least 1 seat available!")
+                    else:
+                        print("There are no seats available.")
     except Exception:
         print("Unable to parse html file")
 
@@ -75,6 +93,14 @@ def main():
     # extract all form details
     form_details = get_form_details(first_form)
 
+    # print help message and get user input
+    print_help()
+    subject = input(f"Enter the subject: ")
+    course_num = input(f"Enter the course number: ")
+    section_num = input(f"Enter the section number: ")
+    term = input(f"Enter the term: ")
+
+
     # fill in data body we want to submit
     data = {}
     for input_tag in form_details["inputs"]:
@@ -82,15 +108,15 @@ def main():
             # if input is hidden or None, use the default value
             data[input_tag["name"]] = input_tag["value"]
         elif input_tag["type"] != "submit":
-            # for all others except submit, prompt the user to set
-            value = input(f"Enter the value of the field '{input_tag['name']}' (type: {input_tag['type']}): ")
-            data[input_tag["name"]] = value
-            print(f"'{input_tag['name']}' has been set to {value}")
+            # set course number
+            if (input_tag["name"] == "cournum"):
+                data[input_tag["name"]] = course_num
 
     for select_tag in form_details["selects"]:
-        value = input(f"Enter the value of the field '{select_tag['name']}': ")
-        data[select_tag["name"]] = value
-        print(f"'{select_tag['name']}' has been set to {value}")
+        if (select_tag["name"] == "sess"):
+            data[select_tag["name"]] = term
+        elif (select_tag["name"] == "subject"):
+            data[select_tag["name"]] = subject
 
     # join the url with the action (form request URL)
     url = urljoin(url, form_details["action"])
@@ -105,11 +131,12 @@ def main():
     open("class_schedule.html", "w").write(str(soup))
 
     # open the page on the default browser
-    # webbrowser.open("class_schedule.html")
+    open_webpage = input(f"Do you want to open the webpage? yes/no: ")
+    if open_webpage == "yes":
+        webbrowser.open("class_schedule.html")
 
     # parse the file to determine number of seats available
-    section_num = input(f"Enter the section number: ")
-    parse_file(section_num)
+    get_enrolment_number(section_num)
 
 
 if __name__ == "__main__":
