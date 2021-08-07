@@ -1,14 +1,11 @@
 from bs4 import BeautifulSoup
+from lxml import etree
 from requests_html import HTMLSession
-from pprint import pprint
 from urllib.parse import urljoin
 import webbrowser
 
-# initialize an HTTP session
-session = HTMLSession()
 
-
-def get_form(url):
+def get_form(url, session):
     """Return all form tags found on web page"""
     res = session.get(url)
     soup = BeautifulSoup(res.html.html, "html.parser")
@@ -48,15 +45,35 @@ def get_form_details(form):
     return details
 
 
+def parse_file(section_num):
+    try:
+        with open(("class_schedule.html"), "r") as f:
+            f = f.read()
+            table = etree.HTML(f).find("body/main/table/tr/td/table")
+            rows = iter(table)
+            headers = [col.text for col in next(rows)]
+            for row in rows:
+                values = [col.text for col in row]
+                section_data = dict(zip(headers, values))
+                if section_data['Class'] == str(section_num):
+                    cap = int(section_data['Enrl Cap'])
+                    tot = int(section_data['Enrl Tot'])
+                    print(f"The enrol cap for this course is: {cap}")
+                    print(f"The number of students enrolled is: {tot}")
+                    print(f"The number of available spots is: {cap - tot}")
+    except Exception:
+        print("Unable to parse html file")
+
+
 def main():
     url = "https://classes.uwaterloo.ca/under.html"
+    session = HTMLSession()
 
     # get the first form
-    first_form = get_form(url)[0]
+    first_form = get_form(url, session)[0]
 
     # extract all form details
     form_details = get_form_details(first_form)
-    pprint(form_details)
 
     # fill in data body we want to submit
     data = {}
@@ -83,34 +100,16 @@ def main():
     elif form_details["method"] == "get":
         res = session.get(url, params=data)
 
-    # replace relative URLs with absolute ones
-    soup = BeautifulSoup(res.content, "html.parser")
-    for link in soup.find_all("link"):
-        try:
-            link.attrs["href"] = urljoin(url, link.attrs["href"])
-        except:
-            pass
-    for script in soup.find_all("script"):
-        try:
-            script.attrs["src"] = urljoin(url, script.attrs["src"])
-        except:
-            pass
-    for img in soup.find_all("img"):
-        try:
-            img.attrs["src"] = urljoin(url, img.attrs["src"])
-        except:
-            pass
-    for a in soup.find_all("a"):
-        try:
-            a.attrs["href"] = urljoin(url, a.attrs["href"])
-        except:
-            pass
-
     # write the page content to a file
+    soup = BeautifulSoup(res.content, "html.parser")
     open("class_schedule.html", "w").write(str(soup))
 
     # open the page on the default browser
-    webbrowser.open("class_schedule.html")
+    # webbrowser.open("class_schedule.html")
+
+    # parse the file to determine number of seats available
+    section_num = input(f"Enter the section number: ")
+    parse_file(section_num)
 
 
 if __name__ == "__main__":
