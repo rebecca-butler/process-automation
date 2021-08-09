@@ -1,8 +1,11 @@
 from bs4 import BeautifulSoup
+from datetime import datetime, timedelta
+from email.mime.text import MIMEText
 from lxml import etree
 from requests_html import HTMLSession
+import smtplib
+from time import sleep
 from urllib.parse import urljoin
-import webbrowser
 
 
 def print_help():
@@ -54,7 +57,7 @@ def get_form_details(form):
 
 
 def get_enrolment_number(section_num):
-    """Parse the HTML and print the number of empty seats in the section"""
+    """Parse the HTML and return the number of empty seats in the section"""
     try:
         with open(("class_schedule.html"), "r") as f:
             # parse file
@@ -72,15 +75,32 @@ def get_enrolment_number(section_num):
                     cap = int(section_data["Enrl Cap"])
                     tot = int(section_data["Enrl Tot"])
                     empty_seats = cap - tot
-                    print(f"Enrolment cap: {cap}")
+                    print(f"\nEnrolment cap: {cap}")
                     print(f"Current enrolment: {tot}")
                     print(f"Seats available: {empty_seats}")
-                    if (empty_seats > 0):
-                        print("There is at least 1 seat available!")
-                    else:
-                        print("There are no seats available.")
+                    return empty_seats
+
     except Exception:
         print("Unable to parse html file")
+
+
+def send_email(email, password, subject, course_num, section_num, empty_seats):
+    """Send email containing updated enrolment info"""
+    sender = email
+    server = smtplib.SMTP("smtp.gmail.com", 587)
+    server.ehlo()
+    server.starttls()
+    server.login(sender, password)
+
+    msg = f"{subject} {course_num} section {section_num} currently has {empty_seats} openings!"
+    msg = MIMEText(msg, 'html')
+
+    msg['Subject'] = 'Course enrolment update'
+    msg['From'] = 'Class Schedule Checker'
+    msg['To'] = sender
+
+    server.sendmail(sender, email, msg.as_string())
+    server.close()
 
 
 def main():
@@ -99,7 +119,6 @@ def main():
     course_num = input(f"Enter the course number: ")
     section_num = input(f"Enter the section number: ")
     term = input(f"Enter the term: ")
-
 
     # fill in data body we want to submit
     data = {}
@@ -130,13 +149,35 @@ def main():
     soup = BeautifulSoup(res.content, "html.parser")
     open("class_schedule.html", "w").write(str(soup))
 
-    # open the page on the default browser
-    open_webpage = input(f"Do you want to open the webpage? yes/no: ")
-    if open_webpage == "yes":
-        webbrowser.open("class_schedule.html")
-
     # parse the file to determine number of seats available
-    get_enrolment_number(section_num)
+    empty_seats = get_enrolment_number(section_num)
+
+    if empty_seats > 0:
+        print("\nThere is at least 1 seat available! You can enrol now.")
+    else:
+        print("\nThere are no seats available.")
+
+        # ask for user's email
+        send_alert = input("Do you want to get an email if a spot opens up? yes/no: ")
+        if send_alert == "yes":
+            email = input("Enter your email: ")
+            password = input("Enter your email password: ")
+            print("\nThanks! We will check every 30 minutes. Please keep the script running...")
+        else:
+            print("That's okay, we will just update you here. Please keep the script running...")
+    
+        # check for updates every 30 minutes
+        while empty_seats == 0:
+            dt = datetime.now() + timedelta(hours=0.5)
+            dt = dt.replace(minute=1)
+            while datetime.now() < dt:
+                sleep(1)
+            empty_seats = int(get_enrolment_number(section_num))
+            print(f"\nUpdate for {datetime.now()}: still no seats available")
+
+        print("A spot has opened! You can enrol now.")
+        if send_alert == "yes":
+            send_email(email, password, subject, course_num, section_num, empty_seats)
 
 
 if __name__ == "__main__":
