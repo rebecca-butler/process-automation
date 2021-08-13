@@ -3,8 +3,7 @@
 __pycache__
 
 # Files produced by scripts
-map.html
-locations.json
-clusters.txt
-
-class_schedule.html
+class_schedule_checker/class_schedule.html
+cluster_addresses/map.html
+cluster_addresses/locations.json
+cluster_addresses/clusters.txt

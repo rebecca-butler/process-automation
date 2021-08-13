@@ -1,11 +1,11 @@
-import os
-import json
 import argparse
-import pandas as pd
-from sklearn.cluster import KMeans
 import gmplot
 import http.server
+import json
+import pandas as pd
+from sklearn.cluster import KMeans
 import socketserver
+
 
 parser = argparse.ArgumentParser(description="Cluster addresses by proximity")
 parser.add_argument("apikey", nargs="?", help="Google Maps API key")
